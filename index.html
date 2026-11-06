@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#ffffff">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-title" content="TASKING">
+  <title>TASKING 任務清單</title>
+  <meta name="description" content="自訂資料夾的任務清單，每完成一項任務就送一包卡包。">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='6' fill='white'/><path d='M6 8 H25 M25 7 V26 M26 25 H7 M7 26 V7' stroke='%231c1c1e' stroke-width='2.4' stroke-linecap='round' fill='none'/><path d='M10 16 Q13 19 14.5 22 Q18 12 29 3' stroke='%231c1c1e' stroke-width='3' stroke-linecap='round' fill='none'/></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/cards.css">
+  <link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+  <div id="app">
+    <header class="top" id="top"></header>
+    <main id="screen"></main>
+  </div>
+  <button class="fab" id="fab" data-act="new-folder" aria-label="新增資料夾" hidden></button>
+
+  <canvas id="fx" aria-hidden="true"></canvas>
+  <div id="modal-root"></div>
+  <div id="stage-root"></div>
+  <div id="toasts" aria-live="polite"></div>
+
+  <script type="module" src="js/main.js"></script>
+</body>
+</html>
