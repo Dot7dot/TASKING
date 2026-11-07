@@ -10,7 +10,7 @@ import { Particles } from './particles.js';
 import { sfx, setSound, unlockAudio } from './sfx.js';
 import {
   markAll, unmarkAll, checkboxSVG, bulletSVG, boltSVG, pencilSVG, doneSVG, backSVG, plusSVG,
-  crossSVG, handleSVG, packIconSVG, underlineSVG, strikeSVG,
+  crossSVG, handleSVG, packIconSVG, underlineSVG, strikeSVG, copySVG,
 } from './marker.js';
 import { sortable } from './sortable.js';
 import { $, $$, esc, htmlToEl, clamp, done } from './util.js';
@@ -211,6 +211,7 @@ function viewFolder() {
       ${editing
         ? `<input class="title-in" value="${esc(f.name)}" maxlength="40" placeholder="資料夾名稱" aria-label="資料夾名稱">`
         : `<h1 class="big">${esc(f.name)}</h1>`}
+      <button class="pen" data-act="dup-folder" aria-label="複製這個資料夾" title="複製這個資料夾">${copySVG()}</button>
       <button class="pen ${editing ? 'on' : ''}" data-act="edit" aria-label="${editing ? '完成編輯' : '編輯'}">${editing ? doneSVG() : pencilSVG()}</button>
     </div>
     <div class="items" data-handle-only="${editing ? 1 : 0}">${itemsHTML(f)}</div>
@@ -510,6 +511,27 @@ function deleteFolderModal() {
   });
 }
 
+/** 複製資料夾：內容一模一樣（文字、備註、勾選、能量條進度、順序），放在原本的資料夾後面 */
+function duplicateFolder() {
+  const f = curFolder();
+  if (!f) return;
+  if (editing) finishEdit();
+  const name = `${f.name}（複製）`.slice(0, 40);
+  // 複製出來的是新的項目：之後完成一樣會送卡包
+  const copy = { id: uid(), name, items: f.items.map((it) => ({ ...it, id: uid(), rewarded: false })) };
+  save.folders.splice(save.folders.indexOf(f) + 1, 0, copy);
+  persist();
+  sfx.coin();
+  editOnOpen = copy.id; // 直接進編輯模式，方便修改
+  location.hash = `#folder/${copy.id}`;
+  setTimeout(() => {
+    const t = $('.title-in', screen);
+    t?.focus();
+    t?.select();
+  }, 60);
+  toast(`已複製「${esc(f.name)}」，可以直接修改 ✎`);
+}
+
 // ───────── 渲染 ─────────
 const VIEWS = { home: viewHome, folder: viewFolder, packs: viewPacks, cards: viewCards };
 
@@ -561,6 +583,7 @@ document.addEventListener('click', (e) => {
       return;
     }
     if (act === 'del-folder') { sfx.tap(); deleteFolderModal(); return; }
+    if (act === 'dup-folder') { duplicateFolder(); return; }
 
     const add = t.closest('[data-add]');
     if (add) {
