@@ -226,3 +226,13 @@ export function boltSVG(seed) {
   const j = () => (rng() - 0.5) * 1.2;
   return svg('0 0 32 32', path(`M${f(18 + j())} 5 L${f(10 + j())} ${f(18 + j())} L${f(16 + j())} 18 L${f(13 + j())} 28 L${f(23 + j())} ${f(13 + j())} L${f(17 + j())} 13 Z`, 2.2, 'stroke-linejoin="round"'), 'bolt-svg');
 }
+
+/** 複製（兩個重疊的框） */
+export function copySVG() {
+  const rng = mulberry32(41);
+  return svg('0 0 32 32',
+    boxStrokes(rng, 11, 11, 15, 15, { width: 2.3, over: 2.5 })
+    + path(stroke(rng, 6, 21, 6, 6, { over: 1.5, jit: 0.4, bow: 0.4 }), 2.2)
+    + path(stroke(rng, 6, 6, 21, 6, { over: 1.5, jit: 0.4, bow: 0.4 }), 2.2),
+    'copy-svg');
+}
