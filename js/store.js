@@ -10,7 +10,9 @@ export let save;
  *  check  勾選框：done 為 true 代表完成
  *  energy 能量條：level 0–10，滿 10 格代表完成
  *  bullet 筆記：沒有完成狀態
- * 每個項目都可以有 note（備註框）。rewarded：已經送過卡包（取消再勾不會重送）
+ * 每個項目都可以有 note（備註框）。
+ * 卡包獎勵：每個任務只送一次（取消再勾、複製資料夾都不會重送）。
+ *  rk：獎勵鍵。複製出來的項目和原本的共用同一個 rk，save.rewardKeys 記錄已經送過的 rk
  */
 const item = (type, text, extra = {}) => ({ id: uid(), type, text, note: '', done: false, level: 0, doneAt: 0, rewarded: false, ...extra });
 
@@ -30,6 +32,7 @@ function freshSave() {
       ] },
     ],
     packs: [],      // [{ id, set, from, at }]
+    rewardKeys: [], // 已經送過卡包的任務（項目的 rk 或 id）
     col: {},        // { [cardId]: { v: ['normal', 'holo'], t: 首次取得時間, n: 抽到幾次 } }
     stats: { opened: 0, done: 0 },
     sound: true,
@@ -44,6 +47,10 @@ export function loadSave() {
     save = freshSave();
   }
   save.stats = { opened: 0, done: 0, ...save.stats };
+  // 舊存檔：已經送過卡包的項目（rewarded: true）補記進 rewardKeys
+  const keys = new Set(save.rewardKeys || []);
+  for (const f of save.folders) for (const it of f.items) if (it.rewarded) keys.add(rewardKey(it));
+  save.rewardKeys = [...keys];
   return save;
 }
 
@@ -59,6 +66,13 @@ export function persistSoon() {
 }
 
 export const newItem = item;
+
+const rewardKey = (it) => it.rk || it.id;
+export const isRewarded = (it) => save.rewardKeys.includes(rewardKey(it));
+export function markRewarded(it) {
+  it.rewarded = true;
+  if (!isRewarded(it)) save.rewardKeys.push(rewardKey(it));
+}
 
 export const isDone = (it) => it.type === 'check' ? !!it.done : it.type === 'energy' ? it.level >= 10 : false;
 
