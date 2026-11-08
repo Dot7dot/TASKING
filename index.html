@@ -13,8 +13,27 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Gochi+Hand&family=Patrick+Hand&family=LXGW+WenKai+TC:wght@400;700&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="css/cards.css">
-  <link rel="stylesheet" href="css/app.css">
+  <meta name="app-version" content="202611081656">
+  <link rel="stylesheet" href="css/cards.css?v=202611081656">
+  <link rel="stylesheet" href="css/app.css?v=202611081656">
+  <!-- 每個檔案都帶版本號：更新後不會讀到手機裡快取的舊檔案（版本號用 scripts/bump-version.sh 更新） -->
+  <script type="importmap">
+  {
+    "imports": {
+      "./js/main.js": "./js/main.js?v=202611081656",
+      "./js/store.js": "./js/store.js?v=202611081656",
+      "./js/data.js": "./js/data.js?v=202611081656",
+      "./js/crayon.js": "./js/crayon.js?v=202611081656",
+      "./js/opening.js": "./js/opening.js?v=202611081656",
+      "./js/particles.js": "./js/particles.js?v=202611081656",
+      "./js/sfx.js": "./js/sfx.js?v=202611081656",
+      "./js/marker.js": "./js/marker.js?v=202611081656",
+      "./js/sortable.js": "./js/sortable.js?v=202611081656",
+      "./js/swipe.js": "./js/swipe.js?v=202611081656",
+      "./js/util.js": "./js/util.js?v=202611081656"
+    }
+  }
+  </script>
 </head>
 <body>
   <div id="app">
@@ -28,6 +47,6 @@
   <div id="stage-root"></div>
   <div id="toasts" aria-live="polite"></div>
 
-  <script type="module" src="js/main.js"></script>
+  <script type="module" src="js/main.js?v=202611081656"></script>
 </body>
 </html>

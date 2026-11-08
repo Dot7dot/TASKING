@@ -125,8 +125,7 @@ async function run(sourceEl, outcome, morePacks, resolve) {
       <div class="deck" style="width:${CW}px;height:${CH}px;left:${(vw - CW) / 2}px;top:${(vh - CH) / 2 - vh * 0.04}px"></div>
       <div class="pack-fly" style="width:${W}px;height:${H}px;left:${(vw - W) / 2}px;top:${(vh - H) / 2}px">
         <div class="pack-shake">
-          <div class="half bottom"><div class="clip" style="clip-path:polygon(${zig.join(',')},100% 100%,0% 100%)">${packInner}</div></div>
-          <div class="half top"><div class="clip" style="clip-path:polygon(0% 0%,100% 0%,${[...zig].reverse().join(',')})">${packInner}</div></div>
+          <div class="whole">${packInner}</div>
           <div class="spark" style="top:${TEAR_Y * 100}%"></div>
         </div>
       </div>
@@ -147,8 +146,14 @@ async function run(sourceEl, outcome, morePacks, resolve) {
   const P = new Particles($('.pcv', stage));
   const fly = $('.pack-fly', stage);
   const shake = $('.pack-shake', stage);
-  const top = $('.half.top', stage);
-  const bottom = $('.half.bottom', stage);
+  // 撕開之前是一整包；撕開的那一刻才換成上下兩半
+  // （以前一開始就是兩個裁切過的半包，iPhone Safari 會把上半包畫成一條白線）
+  const halves = htmlToEl(`<div class="halves">
+    <div class="half bottom"><div class="clip" style="clip-path:polygon(${zig.join(',')},100% 100%,0% 100%)">${packInner}</div></div>
+    <div class="half top"><div class="clip" style="clip-path:polygon(0% 0%,100% 0%,${[...zig].reverse().join(',')})">${packInner}</div></div>
+  </div>`);
+  const top = $('.half.top', halves);
+  const bottom = $('.half.bottom', halves);
   const deck = $('.deck', stage);
   const hint = $('.hint', stage);
   const skip = $('.skip', stage);
@@ -228,6 +233,7 @@ async function run(sourceEl, outcome, morePacks, resolve) {
   }
   await sleep(330);
 
+  $('.whole', stage).replaceWith(halves);
   stage.classList.add('torn');
   sfx.burst(tier);
   const flashOpacity = tier === 'base' ? 0.55 : 1;

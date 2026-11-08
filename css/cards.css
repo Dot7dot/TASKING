@@ -401,8 +401,9 @@ img { -webkit-user-drag: none; }
 body.stage-cover #app { visibility: hidden; } /* 開包時藏起後面的頁面，省下重畫 */
 body.stage-open .pack-cell, body.stage-open .fan-card { animation-play-state: paused; }
 .pack-fly { position: absolute; z-index: 4; will-change: transform; }
-.pack-shake, .half, .half .clip { position: absolute; inset: 0; }
-.pack-shake, .half { will-change: transform; }
+.pack-shake, .whole, .halves, .half, .half .clip { position: absolute; inset: 0; }
+.pack-shake { will-change: transform; }
+.whole .pack { height: 100%; filter: none; }
 .half.top { z-index: 2; }
 .half .pack { height: 100%; filter: none; }
 .spark {
