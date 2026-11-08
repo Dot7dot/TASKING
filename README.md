@@ -62,6 +62,15 @@
 3. **Source** 選 **Deploy from a branch**，Branch 選 `main`、資料夾選 `/ (root)`，按 **Save**
 4. 等一兩分鐘，網址是 `https://dot7dot.github.io/TASKING/`
 
+## 更新版本
+
+GitHub Pages 會讓手機快取檔案約 10 分鐘，所以每個檔案網址都帶版本號（`?v=…`）：
+
+1. 改完程式後執行 `scripts/bump-version.sh`，會更新 `index.html` 和 `version.json` 裡的版本號
+2. 推送到 `main`
+
+手機上開著舊版本的 App，打開（或從背景切回來）時會讀 `version.json`，發現有新版本就自動重新載入。
+
 ## 卡牌資料
 
 - 預設連到 `https://card-uploader.onrender.com/api/cards`
@@ -96,4 +105,6 @@ js/crayon.js      蠟筆風的卡牌、卡包繪製（來自 CardKing）
 js/particles.js   彩紙粒子（來自 CardKing）
 js/sfx.js         合成音效（來自 CardKing）
 js/util.js        小工具
+version.json      目前的版本號（自動更新用）
+scripts/bump-version.sh  更新版本號
 ```

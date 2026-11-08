@@ -829,11 +829,31 @@ function dailyTick() {
   if (!editing && !opening && (route.name === 'home' || (f && isDaily(f)))) render();
 }
 
+// ───────── 自動更新 ─────────
+// GitHub Pages 會讓手機快取檔案約 10 分鐘。打開 App（或從背景切回來）時看一下 version.json，
+// 有比較新的版本就換到帶新版本號的網址，所有檔案都會重新下載。
+const APP_VERSION = $('meta[name="app-version"]')?.content || '';
+async function checkUpdate() {
+  if (!APP_VERSION || opening || editing) return; // 開包或編輯到一半不要打斷
+  try {
+    const res = await fetch(`version.json?t=${Date.now()}`, { cache: 'no-store' });
+    if (!res.ok) return;
+    const { version } = await res.json();
+    if (!version || Number(version) <= Number(APP_VERSION)) return;
+    if (sessionStorage.getItem('tasking.updatedTo') === version) return; // 防止重複重新載入
+    sessionStorage.setItem('tasking.updatedTo', version);
+    persist();
+    const url = new URL(location.href);
+    url.searchParams.set('v', version);
+    location.replace(url.href);
+  } catch { /* 離線就先用現在的版本 */ }
+}
+
 function boot() {
   loadSave();
   checkDailyReset();
   setInterval(dailyTick, 30000);
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) dailyTick(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) { dailyTick(); checkUpdate(); } });
   setSound(save.sound);
   fab.innerHTML = plusSVG();
   if (loadCachedLibrary()) libState = 'ok';
@@ -841,6 +861,7 @@ function boot() {
   route = parseHash();
   render();
   startLibrary();
+  checkUpdate();
 }
 
 boot();
