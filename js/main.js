@@ -1,5 +1,5 @@
 // 主程式：任務清單（資料夾、項目、編輯模式）＋ 卡包區（開包、欣賞卡牌）
-import { save, loadSave, persist, persistSoon, uid, newItem, isDone, sortedItems, folderById } from './store.js';
+import { save, loadSave, persist, persistSoon, uid, newItem, isDone, sortedItems, folderById, isRewarded, markRewarded } from './store.js';
 import {
   lib, RULES, VARIANTS, VARIANT_ORDER, apiBase, loadCachedLibrary, fetchLibrary,
   addPack, assignPackSets, openPack, ownedCards, unlockedIn, setColor,
@@ -296,8 +296,8 @@ function changed(f, it, wasDone, srcEl) {
     save.stats.done++;
     const r = srcEl.getBoundingClientRect();
     confetti(r.left + r.width / 2, r.top + r.height / 2);
-    if (!it.rewarded) {
-      it.rewarded = true;
+    if (!isRewarded(it)) {
+      markRewarded(it);
       addPack(f.name);
       reward(srcEl);
     } else {
@@ -517,8 +517,8 @@ function duplicateFolder() {
   if (!f) return;
   if (editing) finishEdit();
   const name = `${f.name}（複製）`.slice(0, 40);
-  // 複製出來的是新的項目：之後完成一樣會送卡包
-  const copy = { id: uid(), name, items: f.items.map((it) => ({ ...it, id: uid(), rewarded: false })) };
+  // 複製出來的項目和原本的共用獎勵鍵（rk）：同一個任務的卡包只送一次，不會因為複製而重複領取
+  const copy = { id: uid(), name, items: f.items.map((it) => ({ ...it, id: uid(), rk: it.rk || it.id })) };
   save.folders.splice(save.folders.indexOf(f) + 1, 0, copy);
   persist();
   sfx.coin();
