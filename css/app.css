@@ -82,11 +82,11 @@ input, textarea { font: inherit; color: inherit; }
   transition: transform .15s, box-shadow .15s;
   outline: none;
 }
-.folder:nth-child(3n + 2) { transform: rotate(.35deg); }
-.folder:nth-child(3n) { transform: rotate(-.3deg); }
-.folder:active, .folder.pressing { transform: scale(.985); }
+.frow:nth-child(3n + 2) .folder { transform: rotate(.35deg); }
+.frow:nth-child(3n) .folder { transform: rotate(-.3deg); }
+.folder:active, .frow.pressing .folder { transform: scale(.985); }
 .folder:focus-visible { box-shadow: 0 0 0 4px rgba(28, 28, 30, .12); }
-.folder.pressing { transition: transform .38s ease-out; transform: scale(1.02); }
+.frow.pressing .folder { transition: transform .38s ease-out; transform: scale(1.02); }
 .f-name { margin: 0 52px 8px 0; font: 400 1.45rem/1.15 var(--title); letter-spacing: .07em; word-break: break-word; }
 .f-count { position: absolute; top: 16px; right: 18px; color: var(--ink2); font-size: 1rem; }
 .pv { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -100,7 +100,8 @@ input, textarea { font: inherit; color: inherit; }
 
 /* 拖曳中的樣子 */
 .lifted { z-index: 10; box-shadow: 0 14px 30px rgba(0, 0, 0, .14); transition: none !important; }
-.folder.lifted { background: #fff; }
+.frow.lifted { box-shadow: none; }
+.frow.lifted .folder { box-shadow: 0 14px 30px rgba(0, 0, 0, .14); }
 .item.lifted { background: #fff; border-radius: 10px; }
 body.sorting, body.sorting * { cursor: grabbing !important; -webkit-user-select: none !important; user-select: none !important; }
 
@@ -285,3 +286,49 @@ body.sorting, body.sorting * { cursor: grabbing !important; -webkit-user-select:
 @media (prefers-reduced-motion: reduce) {
   .pk-btn.has svg, .spinner { animation: none; }
 }
+
+/* ───────── 資料夾／封存 切換 ───────── */
+.vtabs { display: flex; gap: 26px; margin: -4px 4px 22px; }
+.vtabs a { position: relative; padding: 2px 2px 4px; font-size: 1.2rem; color: var(--ink3); }
+.vtabs a.on { color: var(--ink); }
+.vtabs small { font-size: .85rem; }
+.tab-ul { position: absolute; left: -4px; right: -4px; bottom: -5px; height: 8px; }
+
+/* ───────── 往左滑：封存／復原 ───────── */
+.frow { position: relative; }
+.swipe-bg {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  padding-right: 18px;
+  color: var(--ink2);
+  font-size: 1.15rem;
+  opacity: var(--k, 0);
+  pointer-events: none;
+}
+.swipe-bg svg { width: 34px; height: 34px; transition: transform .15s; }
+.frow.armed .swipe-bg { color: var(--ink); }
+.frow.armed .swipe-bg svg { transform: scale(1.2) rotate(-8deg); }
+.frow:not(.swiping) .swipe-bg { visibility: hidden; }
+.frow.swiping .folder { transition: none; }
+.archive .folder .pv, .archive .folder .f-count, .archive .folder .pv-empty { opacity: .7; }
+.empty-box { width: 64px; height: 64px; opacity: .5; }
+.empty-box svg { width: 100%; height: 100%; }
+.toast button.t-link { padding: 0; border: 0; background: none; font: inherit; color: inherit; cursor: pointer; }
+
+/* ───────── 每日任務（置頂） ───────── */
+.pinned { margin: 0 2px 30px; }
+.folder.daily { background: #fdf4f3; }
+.folder.daily .f-name { color: #8f5751; }
+.f-sub { margin-left: 10px; font-size: .9rem; letter-spacing: .02em; color: #c0908a; white-space: nowrap; }
+.pin { display: inline-block; width: 26px; height: 26px; margin-right: 6px; vertical-align: -3px; }
+.pin svg { width: 100%; height: 100%; display: block; overflow: visible; }
+.big .pin { width: .75em; height: .75em; vertical-align: -.02em; margin-right: .15em; }
+.fpage.daily .big { color: #8f5751; }
+
+/* 封存的資料夾只能看 */
+.readonly .cb, .readonly .ecell { pointer-events: none; }
+.readonly .items { opacity: .8; }

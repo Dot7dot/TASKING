@@ -19,18 +19,18 @@ export function stroke(rng, x1, y1, x2, y2, { bow = 1.4, over = 5, jit = 1.1 } =
   return `M${f(sx)} ${f(sy)}Q${f(cx)} ${f(cy)} ${f(ex)} ${f(ey)}`;
 }
 
-const path = (d, w = 2.4, extra = '') =>
-  `<path d="${d}" fill="none" stroke="${INK}" stroke-width="${f(w)}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
+const path = (d, w = 2.4, extra = '', color = INK) =>
+  `<path d="${d}" fill="none" stroke="${color}" stroke-width="${f(w)}" stroke-linecap="round" stroke-linejoin="round" ${extra}/>`;
 
 /** 四筆畫成的框 */
-export function boxStrokes(rng, x, y, w, h, { width = 2.4, over = 6 } = {}) {
+export function boxStrokes(rng, x, y, w, h, { width = 2.4, over = 6, color = INK } = {}) {
   const k = Math.min(1, Math.min(w, h) / 60);
   const o = { over: over * (0.4 + k * 0.6), jit: 0.6 + k * 0.6, bow: 0.6 + k };
   const wv = () => width * (0.85 + rng() * 0.3);
-  return path(stroke(rng, x, y, x + w, y, o), wv())
-    + path(stroke(rng, x + w, y, x + w, y + h, o), wv())
-    + path(stroke(rng, x + w, y + h, x, y + h, o), wv())
-    + path(stroke(rng, x, y + h, x, y, o), wv());
+  return path(stroke(rng, x, y, x + w, y, o), wv(), '', color)
+    + path(stroke(rng, x + w, y, x + w, y + h, o), wv(), '', color)
+    + path(stroke(rng, x + w, y + h, x, y + h, o), wv(), '', color)
+    + path(stroke(rng, x, y + h, x, y, o), wv(), '', color);
 }
 
 /** 在一個格子裡來回塗（麥克筆塗滿） */
@@ -69,7 +69,7 @@ const ro = typeof ResizeObserver !== 'undefined'
   : null;
 
 const KINDS = {
-  box(rng, w, h) { return boxStrokes(rng, 0, 0, w, h, { width: 2.6 }); },
+  box(rng, w, h, el) { return boxStrokes(rng, 0, 0, w, h, { width: 2.6, color: el.dataset.mkColor || INK }); },
   thin(rng, w, h) { return boxStrokes(rng, 0, 0, w, h, { width: 1.8, over: 4 }); },
   energy(rng, w, h, el) {
     const level = Number(el.dataset.level) || 0;
@@ -235,4 +235,34 @@ export function copySVG() {
     + path(stroke(rng, 6, 21, 6, 6, { over: 1.5, jit: 0.4, bow: 0.4 }), 2.2)
     + path(stroke(rng, 6, 6, 21, 6, { over: 1.5, jit: 0.4, bow: 0.4 }), 2.2),
     'copy-svg');
+}
+
+/** 圖釘（置頂資料夾） */
+export function pinSVG(color = '#c4766d') {
+  const rng = mulberry32(57);
+  return svg('0 0 32 32',
+    `<path d="${circleStroke(rng, 18.5, 11.5, 5.2, { turns: 1.6, n: 16 })}" fill="${color}" fill-opacity=".35" stroke="${color}" stroke-width="2.2" stroke-linecap="round"/>`
+    + path(stroke(rng, 15, 15.5, 7, 26, { over: 0.5, jit: 0.3, bow: 0.2 }), 2.4, '', color)
+    + path(stroke(rng, 11.5, 9, 24, 19, { over: 0.5, jit: 0.4, bow: 0.3 }), 2.4, '', color),
+    'pin-svg');
+}
+
+/** 封存箱 */
+export function boxIconSVG() {
+  const rng = mulberry32(63);
+  return svg('0 0 32 32',
+    boxStrokes(rng, 5, 7, 22, 6, { width: 2.2, over: 1.5 })
+    + path(stroke(rng, 7, 13.5, 7.5, 26, { over: 0.8, jit: 0.4 }), 2.2)
+    + path(stroke(rng, 25, 13.5, 24.5, 26, { over: 0.8, jit: 0.4 }), 2.2)
+    + path(stroke(rng, 7, 26, 25, 26, { over: 1, jit: 0.4 }), 2.2)
+    + path(stroke(rng, 13, 17.5, 19, 17.5, { over: 0.3, jit: 0.3 }), 2.2),
+    'box-svg');
+}
+
+/** 復原（往回的箭頭） */
+export function undoSVG() {
+  return svg('0 0 32 32',
+    path('M9 12 Q16 6 23 11 Q28 15 25.5 21 Q23 26 15 26', 2.4)
+    + path('M8.5 5.5 Q8.7 9 9 12.5 Q12.5 12.6 16 12.4', 2.4),
+    'undo-svg');
 }

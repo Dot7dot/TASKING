@@ -1,5 +1,8 @@
 // 主程式：任務清單（資料夾、項目、編輯模式）＋ 卡包區（開包、欣賞卡牌）
-import { save, loadSave, persist, persistSoon, uid, newItem, isDone, sortedItems, folderById, isRewarded, markRewarded } from './store.js';
+import {
+  save, loadSave, persist, persistSoon, uid, newItem, isDone, sortedItems, folderById, isRewarded, markRewarded,
+  isArchived, isDaily, archiveFolder, restoreFolder, checkDailyReset, nextDailyReset, DAILY_RESET_HOUR,
+} from './store.js';
 import {
   lib, RULES, VARIANTS, VARIANT_ORDER, apiBase, loadCachedLibrary, fetchLibrary,
   addPack, assignPackSets, openPack, ownedCards, unlockedIn, setColor,
@@ -10,9 +13,10 @@ import { Particles } from './particles.js';
 import { sfx, setSound, unlockAudio } from './sfx.js';
 import {
   markAll, unmarkAll, checkboxSVG, bulletSVG, boltSVG, pencilSVG, doneSVG, backSVG, plusSVG,
-  crossSVG, handleSVG, packIconSVG, underlineSVG, strikeSVG, copySVG,
+  crossSVG, handleSVG, packIconSVG, underlineSVG, strikeSVG, copySVG, pinSVG, boxIconSVG, undoSVG,
 } from './marker.js';
 import { sortable } from './sortable.js';
+import { swipeable } from './swipe.js';
 import { $, $$, esc, htmlToEl, clamp, done } from './util.js';
 
 const screen = $('#screen');
@@ -33,7 +37,7 @@ function parseHash() {
   const h = location.hash.replace(/^#\/?/, '');
   const [name, id] = h.split('/');
   if (name === 'folder' && id && folderById(id)) return { name: 'folder', id };
-  if (name === 'packs' || name === 'cards') return { name };
+  if (name === 'packs' || name === 'cards' || name === 'archive') return { name };
   return { name: 'home' };
 }
 
@@ -102,11 +106,14 @@ function packBtnHTML() {
 }
 
 function renderTop() {
-  const back = route.name === 'home' ? '<span></span>' : `<a class="ic-btn" href="${route.name === 'cards' ? '#packs' : '#'}" data-back aria-label="返回">${backSVG()}</a>`;
+  const f = curFolder();
+  const backTo = route.name === 'cards' ? '#packs' : f && isArchived(f) ? '#archive' : '#';
+  const back = route.name === 'home' || route.name === 'archive' ? '<span></span>' : `<a class="ic-btn" href="${backTo}" data-back aria-label="返回">${backSVG()}</a>`;
   const right = route.name === 'packs' || route.name === 'cards'
     ? `<button class="ic-btn snd" data-act="sound" aria-label="音效開關">${save.sound ? '🔊' : '🔇'}</button>`
     : packBtnHTML();
-  top.innerHTML = `${back}<span class="top-mid">${route.name === 'folder' ? '<small>TASK LIST</small>' : ''}</span>${right}`;
+  const mid = route.name !== 'folder' ? '' : f && isArchived(f) ? 'ARCHIVE' : 'TASK LIST';
+  top.innerHTML = `${back}<span class="top-mid">${mid ? `<small>${mid}</small>` : ''}</span>${right}`;
 }
 
 function bumpPackBtn() {
@@ -129,31 +136,93 @@ function previewRow(it) {
   </li>`;
 }
 
+const DAILY_INK = '#d39a93'; // 每日任務：淡淡的紅色
+const resetLabel = `${String(DAILY_RESET_HOUR).padStart(2, '0')}:00`;
+
 function folderCard(f) {
   const items = sortedItems(f);
   const total = items.filter((i) => i.type !== 'bullet').length;
   const dn = items.filter(isDone).length;
-  return `<article class="folder" data-folder="${f.id}" data-sort-id="${f.id}" data-mk="${f.id}" tabindex="0">
-    <h2 class="f-name">${esc(f.name)}</h2>
+  const daily = isDaily(f);
+  return `<article class="folder ${daily ? 'daily' : ''}" data-folder="${f.id}" data-mk="${f.id}" ${daily ? `data-mk-color="${DAILY_INK}"` : ''} tabindex="0">
+    <h2 class="f-name">${daily ? `<span class="pin">${pinSVG()}</span>` : ''}${esc(f.name)}${daily ? `<small class="f-sub">每天 ${resetLabel} 重置</small>` : ''}</h2>
     ${total ? `<span class="f-count">${dn}/${total}</span>` : ''}
     ${items.length ? `<ul class="pv">${items.slice(0, 3).map(previewRow).join('')}</ul>` : '<p class="pv-empty">還沒有任務，點進來新增 ✎</p>'}
     ${items.length > 3 ? `<p class="pv-more">還有 ${items.length - 3} 項 …</p>` : ''}
   </article>`;
 }
 
+/** 主畫面的一列：卡片後面藏著「封存／復原」，往左滑才看得到 */
+function folderRow(f, mode) {
+  const bg = mode === 'archive' ? `${undoSVG()}<span>復原</span>` : `${boxIconSVG()}<span>封存</span>`;
+  return `<div class="frow" data-sort-id="${f.id}">
+    <div class="swipe-bg">${bg}</div>
+    ${folderCard(f)}
+  </div>`;
+}
+
+function viewTabs(active) {
+  const n = save.archive.length;
+  const tab = (key, href, label) => `<a href="${href}" class="${active === key ? 'on' : ''}">${label}${active === key ? `<span class="tab-ul">${underlineSVG(`tab-${key}`)}</span>` : ''}</a>`;
+  return `<nav class="vtabs">${tab('home', '#', '資料夾')}${tab('archive', '#archive', `封存${n ? ` <small>${n}</small>` : ''}`)}</nav>`;
+}
+
 function viewHome() {
   return `<section class="home">
     <h1 class="big">TASK LIST<span class="ul">${underlineSVG('title')}</span></h1>
-    <div class="folders">${save.folders.map(folderCard).join('')}</div>
-    ${save.folders.length ? '<p class="tipl">點資料夾看內容 · 長按可以拖曳排序</p>' : '<p class="tipl big-hint">按右下角的 ＋ 新增第一個資料夾</p>'}
+    ${viewTabs('home')}
+    <div class="pinned">${folderCard(save.daily)}</div>
+    <div class="folders">${save.folders.map((f) => folderRow(f, 'home')).join('')}</div>
+    ${save.folders.length ? '<p class="tipl">點資料夾看內容 · 長按拖曳排序 · 往左滑封存</p>' : '<p class="tipl big-hint">按右下角的 ＋ 新增資料夾</p>'}
   </section>`;
+}
+
+function viewArchive() {
+  const list = save.archive;
+  return `<section class="home archive">
+    <h1 class="big">TASK LIST<span class="ul">${underlineSVG('title')}</span></h1>
+    ${viewTabs('archive')}
+    ${list.length
+      ? `<div class="folders">${list.map((f) => folderRow(f, 'archive')).join('')}</div>
+        <p class="tipl">點資料夾看內容 · 往左滑就能復原到主畫面</p>`
+      : `<div class="lib-msg"><div class="empty-box">${boxIconSVG()}</div><p>還沒有封存的資料夾。<br>在主畫面把資料夾往左滑就能封存。</p></div>`}
+  </section>`;
+}
+
+function bindArchive() {
+  const list = $('.folders', screen);
+  if (!list) return;
+  swipeable(list, {
+    row: '.frow',
+    card: '.folder',
+    onSwipe: (r) => {
+      const f = folderById(r.dataset.sortId);
+      if (!f) return;
+      restoreFolder(f);
+      sfx.coin();
+      render();
+      toast(`已復原「${esc(f.name)}」到主畫面`);
+    },
+  });
 }
 
 function bindHome() {
   const list = $('.folders', screen);
   if (!list) return;
+  swipeable(list, {
+    row: '.frow',
+    card: '.folder',
+    onSwipe: (r) => {
+      const f = folderById(r.dataset.sortId);
+      if (!f) return;
+      archiveFolder(f);
+      sfx.whoosh();
+      render();
+      toast(`已封存「${esc(f.name)}」 <button class="t-link" data-act="undo-archive" data-id="${f.id}">復原</button>`, 3500);
+    },
+  });
   sortable(list, {
-    item: '.folder',
+    item: '.frow',
     onStart: () => sfx.tap(),
     onDrop: (ids, moved) => {
       if (!moved) return;
@@ -204,15 +273,32 @@ function itemsHTML(f) {
   return items.map(itemHTML).join('');
 }
 
+function nextResetText() {
+  const next = new Date(nextDailyReset());
+  const today = new Date();
+  return `${next.getDate() === today.getDate() ? '今天' : '明天'} ${resetLabel}`;
+}
+
 function viewFolder() {
   const f = folderById(route.id);
-  return `<section class="fpage ${editing ? 'editing' : ''}">
+  const arch = isArchived(f), daily = isDaily(f);
+  if (arch) editing = false;
+  const buttons = arch
+    ? `<button class="pen" data-act="restore" aria-label="復原到主畫面" title="復原到主畫面">${undoSVG()}</button>`
+    : `${daily ? '' : `<button class="pen" data-act="dup-folder" aria-label="複製這個資料夾" title="複製這個資料夾">${copySVG()}</button>`}
+      <button class="pen ${editing ? 'on' : ''}" data-act="edit" aria-label="${editing ? '完成編輯' : '編輯'}">${editing ? doneSVG() : pencilSVG()}</button>`;
+  const tip = arch
+    ? `<p class="tipl">這是封存的資料夾，只能看不能改。<br>按右上角的復原，或在封存區往左滑，就能放回主畫面。</p>
+      <button class="del-folder" data-act="del-folder">永久刪除這個資料夾</button>`
+    : daily && !editing
+      ? `<p class="tipl">每天早上 ${resetLabel} 進度會歸零（下次：${nextResetText()}）<br>每天完成都會再送一包卡包 🎁</p>`
+      : '';
+  return `<section class="fpage ${editing ? 'editing' : ''} ${arch ? 'readonly' : ''} ${daily ? 'daily' : ''}">
     <div class="fp-head">
       ${editing
         ? `<input class="title-in" value="${esc(f.name)}" maxlength="40" placeholder="資料夾名稱" aria-label="資料夾名稱">`
-        : `<h1 class="big">${esc(f.name)}</h1>`}
-      <button class="pen" data-act="dup-folder" aria-label="複製這個資料夾" title="複製這個資料夾">${copySVG()}</button>
-      <button class="pen ${editing ? 'on' : ''}" data-act="edit" aria-label="${editing ? '完成編輯' : '編輯'}">${editing ? doneSVG() : pencilSVG()}</button>
+        : `<h1 class="big">${daily ? `<span class="pin">${pinSVG()}</span>` : ''}${esc(f.name)}</h1>`}
+      ${buttons}
     </div>
     <div class="items" data-handle-only="${editing ? 1 : 0}">${itemsHTML(f)}</div>
     ${editing ? `<div class="add-bar">
@@ -221,9 +307,16 @@ function viewFolder() {
         <button class="add-btn" data-add="energy" data-mk="ab3" data-mk-kind="thin">${boltSVG('add')}<span>能量條</span></button>
       </div>
       <p class="tipl">按住 ≡ 可以拖曳排序 · 完成的項目會自動移到下面</p>
-      <button class="del-folder" data-act="del-folder">刪除這個資料夾</button>`
-      : '<p class="tipl">勾選或把能量條填滿 10 格就算完成，每完成一項送一包卡包 🎁</p>'}
+      ${daily ? '' : '<button class="del-folder" data-act="del-folder">刪除這個資料夾</button>'}`
+      : tip || '<p class="tipl">勾選或把能量條填滿 10 格就算完成，每完成一項送一包卡包 🎁</p>'}
   </section>`;
+}
+
+/** 新項目；每日任務的項目帶上今天的獎勵鍵（每天完成都送一次卡包） */
+function newItemIn(f, type) {
+  const it = newItem(type, '');
+  if (isDaily(f)) it.rk = `${it.id}@${f.period}`;
+  return it;
 }
 
 function curFolder() { return route.name === 'folder' ? folderById(route.id) : null; }
@@ -256,7 +349,7 @@ function autoGrow(t) {
 
 function bindFolder() {
   const box = $('.items', screen);
-  if (!box) return;
+  if (!box || isArchived(curFolder())) return;
   if (editing) $$('textarea', screen).forEach(autoGrow);
   sortable(box, {
     item: '.item',
@@ -503,11 +596,13 @@ function deleteFolderModal() {
     </div>
   </div>`);
   $('[data-act="confirm-del"]', m).addEventListener('click', () => {
+    const arch = isArchived(f);
     save.folders = save.folders.filter((x) => x.id !== f.id);
+    save.archive = save.archive.filter((x) => x.id !== f.id);
     editing = false;
     persist();
     m.close();
-    location.hash = '#';
+    location.hash = arch ? '#archive' : '#';
   });
 }
 
@@ -533,7 +628,7 @@ function duplicateFolder() {
 }
 
 // ───────── 渲染 ─────────
-const VIEWS = { home: viewHome, folder: viewFolder, packs: viewPacks, cards: viewCards };
+const VIEWS = { home: viewHome, archive: viewArchive, folder: viewFolder, packs: viewPacks, cards: viewCards };
 
 function render() {
   const keepScroll = screen.dataset.route === route.name + (route.id || '') ? scrollY : 0;
@@ -545,6 +640,7 @@ function render() {
   markAll(screen);
   fab.hidden = route.name !== 'home';
   if (route.name === 'home') bindHome();
+  if (route.name === 'archive') bindArchive();
   if (route.name === 'folder') bindFolder();
   scrollTo(0, keepScroll);
 }
@@ -566,13 +662,29 @@ document.addEventListener('click', (e) => {
   }
   if (act === 'new-folder') { sfx.tap(); newFolderModal(); return; }
   if (act === 'retry') { startLibrary(); render(); return; }
+  if (act === 'undo-archive') {
+    const af = folderById(t.closest('[data-id]').dataset.id);
+    if (af && isArchived(af)) { restoreFolder(af); sfx.tap(); t.closest('.toast')?.remove(); if (route.name === 'home' || route.name === 'archive') render(); }
+    return;
+  }
 
   // 首頁：點資料夾
   const folderEl = t.closest('.folder[data-folder]');
-  if (folderEl && route.name === 'home') { sfx.tap(); location.hash = `#folder/${folderEl.dataset.folder}`; return; }
+  if (folderEl && (route.name === 'home' || route.name === 'archive')) { sfx.tap(); location.hash = `#folder/${folderEl.dataset.folder}`; return; }
 
   // 資料夾頁
   const f = curFolder();
+  if (f && isArchived(f)) {
+    // 封存的資料夾只能看：只有復原和刪除
+    if (act === 'restore') {
+      restoreFolder(f);
+      sfx.coin();
+      toast(`已復原「${esc(f.name)}」到主畫面`);
+      location.hash = '#';
+    }
+    if (act === 'del-folder') { sfx.tap(); deleteFolderModal(); }
+    return;
+  }
   if (f) {
     if (act === 'edit') {
       sfx.tap();
@@ -587,7 +699,7 @@ document.addEventListener('click', (e) => {
 
     const add = t.closest('[data-add]');
     if (add) {
-      const it = newItem(add.dataset.add, '');
+      const it = newItemIn(f, add.dataset.add);
       f.items.push(it);
       persist();
       sfx.tap();
@@ -681,7 +793,7 @@ document.addEventListener('keydown', (e) => {
     // Enter：在下面新增一個同類型的項目
     e.preventDefault();
     const cur = findItem(f, e.target.closest('[data-item]').dataset.item);
-    const it = newItem(cur.type === 'energy' ? 'check' : cur.type, '');
+    const it = newItemIn(f, cur.type === 'energy' ? 'check' : cur.type);
     f.items.splice(f.items.indexOf(cur) + 1, 0, it);
     persist();
     renderItems(false);
@@ -708,8 +820,19 @@ function startLibrary() {
     .finally(() => { if ((route.name === 'packs' || route.name === 'cards') && !opening) render(); });
 }
 
+/** 早上 8 點過後重置每日任務（開著 App 跨過 8 點、或隔天打開時都會檢查） */
+function dailyTick() {
+  if (!checkDailyReset()) return;
+  toast('☀️ 早安！每日任務已經重置');
+  const f = curFolder();
+  if (!editing && !opening && (route.name === 'home' || (f && isDaily(f)))) render();
+}
+
 function boot() {
   loadSave();
+  checkDailyReset();
+  setInterval(dailyTick, 30000);
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) dailyTick(); });
   setSound(save.sound);
   fab.innerHTML = plusSVG();
   if (loadCachedLibrary()) libState = 'ok';
