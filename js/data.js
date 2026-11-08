@@ -4,7 +4,8 @@ import { hashStr } from './util.js';
 import { save, persist } from './store.js';
 
 export const RULES = {
-  cardsPerPack: 3,  // 每包幾張
+  cardsPerPack: 2,  // 每包幾張
+  packSet: 'B00',   // 卡包統一是這個系列（卡牌製造機裡的 set）
   goldTier: 3,      // 稀有度 >= 3：開包時黃金光
   rainbowTier: 4,   // 稀有度 >= 4：開包時彩虹光
 };
@@ -41,10 +42,18 @@ export function rarityNum(rarity) {
 }
 export const tierOf = (r) => (r >= RULES.rainbowTier ? 'rainbow' : r >= RULES.goldTier ? 'gold' : 'base');
 
+// ───────── 卡包系列 ─────────
+// 卡包統一是 B00 系列：深藍色底、黃字
+export const PACK_THEME = { fill: '#1d2a57', dark: '#131d42', text: '#f2c84b' };
+export const isPackSet = (name) => String(name ?? '').trim().toUpperCase() === RULES.packSet;
+/** B00 系列的卡（卡牌製造機裡的系列名稱大小寫、前後空白不影響） */
+export const packPool = () => lib.sets.find((s) => isPackSet(s.name))?.cards ?? [];
+
 // ───────── 系列顏色 ─────────
 const PALETTE = ['#e5533d', '#3d7fe0', '#5bb04f', '#8a5cd6', '#f39a2b', '#2bb3a3', '#e46aa6', '#d4b21f', '#a8714a', '#4a5bd6', '#c0392b', '#16a085'];
 const colorMap = new Map();
 export function setColor(name) {
+  if (isPackSet(name)) return PACK_THEME.fill;
   if (!colorMap.has(name)) colorMap.set(name, PALETTE[hashStr(name) % PALETTE.length]);
   return colorMap.get(name);
 }
@@ -52,6 +61,7 @@ function assignColors(setNames) {
   colorMap.clear();
   const used = new Set();
   for (const name of [...setNames].sort()) {
+    if (isPackSet(name)) continue;
     let i = hashStr(name) % PALETTE.length;
     for (let k = 0; k < PALETTE.length && used.has(i); k++) i = (i + 1) % PALETTE.length;
     used.add(i);
@@ -120,27 +130,18 @@ export async function fetchLibrary({ timeoutMs = 90000, onSlow } = {}) {
 // ───────── 卡包 ─────────
 const uid = () => Math.random().toString(36).slice(2, 10);
 
-/**
- * 卡包的系列在拿到的時候隨機決定；如果那時候卡牌資料還沒載入
- * （或那個系列後來被刪掉了），就等資料載入後再補上。
- */
-function randomSet() {
-  return lib.sets.length ? lib.sets[Math.floor(Math.random() * lib.sets.length)].name : null;
-}
+/** 卡包統一是 B00 系列：以前拿到、還沒開的其他系列卡包也一起換成 B00 */
 export function assignPackSets() {
   let changed = false;
   for (const p of save.packs) {
-    if (!p.set || (lib.sets.length && !lib.setByName.has(p.set))) {
-      const s = randomSet();
-      if (s && s !== p.set) { p.set = s; changed = true; }
-    }
+    if (p.set !== RULES.packSet) { p.set = RULES.packSet; changed = true; }
   }
   if (changed) persist();
 }
 
 /** 完成任務的獎勵：一包卡包 */
 export function addPack(from = '') {
-  const pack = { id: uid(), set: randomSet(), from, at: Date.now() };
+  const pack = { id: uid(), set: RULES.packSet, from, at: Date.now() };
   save.packs.push(pack);
   persist();
   return pack;
@@ -193,8 +194,8 @@ export function openPack(packId) {
   const idx = save.packs.findIndex((p) => p.id === packId);
   if (idx < 0) return null;
   const pack = save.packs[idx];
-  const pool = lib.setByName.get(pack.set)?.cards ?? lib.cards;
-  if (!pool.length) return null;
+  const pool = packPool();
+  if (!pool.length) return null; // 資料庫裡還沒有 B00 的卡：卡包先留著
   save.packs.splice(idx, 1);
 
   // 先抽好並排序（最稀有的留到最後翻），再依翻牌順序判斷新卡／重複
@@ -221,5 +222,5 @@ export function openPack(packId) {
   save.stats.opened++;
   const best = Math.max(...results.map((x) => x.r));
   persist();
-  return { pack: { ...pack, set: lib.setByName.has(pack.set) ? pack.set : (pool[0]?._set ?? '卡包') }, results, tier: tierOf(best) };
+  return { pack: { ...pack, set: RULES.packSet }, results, tier: tierOf(best) };
 }
