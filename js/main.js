@@ -5,7 +5,7 @@ import {
 } from './store.js';
 import {
   lib, RULES, VARIANTS, VARIANT_ORDER, apiBase, loadCachedLibrary, fetchLibrary,
-  addPack, assignPackSets, openPack, ownedCards, unlockedIn, setColor,
+  addPack, assignPackSets, openPack, ownedCards, unlockedIn, setColor, packPool,
 } from './data.js';
 import { cardHTML, packHTML } from './crayon.js';
 import { playOpening } from './opening.js';
@@ -455,11 +455,12 @@ function viewPacks() {
     const groups = new Map();
     for (const p of save.packs) groups.set(p.set, (groups.get(p.set) || 0) + 1);
     body = groups.size
-      ? `<p class="tipl">點一下卡包就會開包 ✨　每包 ${RULES.cardsPerPack} 張</p>
+      ? `${packPool().length ? `<p class="tipl">點一下卡包就會開包 ✨　每包 ${RULES.cardsPerPack} 張</p>`
+        : `<p class="tipl warn">卡牌資料庫裡還沒有「${RULES.packSet}」系列的卡牌，<br>卡包先幫你留著，新增卡牌後就能開。</p>`}
         <div class="pack-grid">${[...groups].map(([set, n]) => `<button class="pack-cell ${n > 1 ? 'stacked' : ''}" data-open="${esc(set)}" style="--c:${setColor(set)}">
           ${n > 2 ? '<span class="pack-shadow s2"></span>' : ''}${n > 1 ? '<span class="pack-shadow s1"></span>' : ''}
           ${packHTML(set)}${n > 1 ? `<span class="pack-n">×${n}</span>` : ''}</button>`).join('')}</div>`
-      : `<div class="lib-msg"><div class="ghost-pack">${packHTML(lib.sets[0]?.name || '卡包')}</div>
+      : `<div class="lib-msg"><div class="ghost-pack">${packHTML(RULES.packSet)}</div>
         <p>還沒有卡包。<br>每完成一個任務，就會得到一包卡包（${RULES.cardsPerPack} 張）！</p>
         <a class="mbtn" href="#" data-mk="gohome">回到任務清單</a></div>`;
   }
@@ -546,7 +547,7 @@ async function openFromSet(setName, packEl) {
   const pack = save.packs.find((p) => p.set === setName);
   if (!pack) return;
   const outcome = openPack(pack.id);
-  if (!outcome) { toast('這個系列目前沒有卡牌'); return; }
+  if (!outcome) { toast(`卡牌資料庫裡還沒有「${RULES.packSet}」系列的卡牌`); return; }
   opening = true;
   const more = save.packs.filter((p) => p.set === setName).length;
   const act = await playOpening(packEl, outcome, { morePacks: more });

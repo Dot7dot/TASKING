@@ -1,6 +1,6 @@
 // 蠟筆風的繪圖工具：卡牌、卡包、卡背、按鈕底圖
 import { esc, mulberry32, hashStr } from './util.js';
-import { rarityNum, tierOf, setColor, VARIANTS, RULES } from './data.js';
+import { rarityNum, tierOf, setColor, VARIANTS, RULES, isPackSet, PACK_THEME } from './data.js';
 
 const INK = '#2d2a32';
 const f = (n) => Math.round(n * 10) / 10;
@@ -183,23 +183,27 @@ export function cardBackHTML(seed = 1) {
 export const TEAR_Y = 0.16;
 export function packHTML(setName, { cls = '' } = {}) {
   const color = setColor(setName);
+  // B00 卡包：深藍色底、黃字（標籤和圓也換成深藍，黃字才看得清楚）
+  const navy = isPackSet(setName);
+  const label = navy ? PACK_THEME.dark : 'rgba(255,252,240,.92)';
+  const disc = navy ? PACK_THEME.dark : '#fff8e6';
   const rng = mulberry32(hashStr(setName) + 3);
   let outline = 'M8 14';
   for (let x = 8, i = 0; x <= 192; x += 8, i++) outline += `L${x} ${i % 2 ? 5 : 14}`;
   outline += 'L192 286';
   for (let x = 192, i = 0; x >= 8; x -= 8, i++) outline += `L${x} ${i % 2 ? 295 : 286}`;
   outline += 'Z';
-  return `<div class="pack ${cls}" style="--c:${color}" data-set="${esc(setName)}">
-    ${svgImg(`p|${setName}|${color}`, 'pack-svg', '0 0 200 300', () => `
+  return `<div class="pack ${navy ? 'navy' : ''} ${cls}" style="--c:${color}" data-set="${esc(setName)}">
+    ${svgImg(`p|${setName}|${color}|${navy}`, 'pack-svg', '0 0 200 300', () => `
       <g filter="url(#crayon)">
         <path d="${outline}" fill="${color}" stroke="${INK}" stroke-width="4" stroke-linejoin="round"/>
         <rect x="9" y="14" width="182" height="34" fill="rgba(0,0,0,.18)"/>
         ${scribble(rng, 14, 60, 60, 150, 'rgba(255,255,255,.22)', 5, 13)}
         ${scribble(rng, 140, 120, 46, 120, 'rgba(0,0,0,.10)', 5, 13)}
         <path d="M14 49 H186" stroke="${INK}" stroke-width="2.4" stroke-dasharray="7 6"/>
-        ${doubleStroke(rng, () => roughCircle(rng, 100, 128, 44, 1.8), INK, 3.2, 1.6, '#fff8e6')}
+        ${doubleStroke(rng, () => roughCircle(rng, 100, 128, 44, 1.8), INK, 3.2, 1.6, disc)}
         <path d="M74 146 L80 108 L92 126 L100 100 L108 126 L120 108 L126 146 Z" fill="#f2c84b" stroke="${INK}" stroke-width="3" stroke-linejoin="round"/>
-        <path d="${roughRect(rng, 22, 196, 156, 64, 1.3)}" fill="rgba(255,252,240,.92)" stroke="${INK}" stroke-width="2.6"/>
+        <path d="${roughRect(rng, 22, 196, 156, 64, 1.3)}" fill="${label}" stroke="${INK}" stroke-width="2.6"/>
       </g>`)}
     <div class="pack-top">CARD PACK</div>
     <div class="pack-name">${esc(setName)}</div>

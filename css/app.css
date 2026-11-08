@@ -332,3 +332,9 @@ body.sorting, body.sorting * { cursor: grabbing !important; -webkit-user-select:
 /* 封存的資料夾只能看 */
 .readonly .cb, .readonly .ecell { pointer-events: none; }
 .readonly .items { opacity: .8; }
+
+/* B00 卡包：深藍色底、黃字 */
+.pack.navy .pack-top, .pack.navy .pack-name, .pack.navy .pack-count { color: #f2c84b; }
+.pack.navy .pack-top { text-shadow: 1px 1px 0 rgba(0, 0, 0, .45); }
+.pack.navy .pack-count { opacity: .85; }
+.tipl.warn { color: var(--ink2); }
